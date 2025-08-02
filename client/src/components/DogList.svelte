@@ -7,14 +7,43 @@
         breed: string;
     }
 
+    interface Breed {
+        id: number;
+        name: string;
+    }
+
     export let dogs: Dog[] = [];
     let loading = true;
     let error: string | null = null;
+    let breeds: Breed[] = [];
+    let selectedBreed: number | null = null;
+    let onlyAvailable: boolean = false;
+
+    const fetchBreeds = async () => {
+        try {
+            const response = await fetch('/api/breeds');
+            if(response.ok) {
+                breeds = await response.json();
+            } else {
+                console.error(`Failed to fetch breeds: ${response.status} ${response.statusText}`);
+            }
+        } catch (err) {
+            console.error(`Error fetching breeds: ${err instanceof Error ? err.message : String(err)}`);
+        }
+    };
 
     const fetchDogs = async () => {
         loading = true;
         try {
-            const response = await fetch('/api/dogs');
+            // Build query string with selected filters
+            let queryParams = new URLSearchParams();
+            if (selectedBreed) queryParams.append('breed', selectedBreed.toString());
+            if (onlyAvailable) queryParams.append('available', 'true');
+            
+            const queryString = queryParams.toString();
+            const url = `/api/dogs${queryString ? `?${queryString}` : ''}`;
+            
+            const response = await fetch(url);
             if(response.ok) {
                 dogs = await response.json();
             } else {
@@ -27,13 +56,48 @@
         }
     };
 
+    // Apply filters when they change
+    $: {
+        if (typeof selectedBreed !== 'undefined' || typeof onlyAvailable !== 'undefined') {
+            fetchDogs();
+        }
+    }
+
     onMount(() => {
+        fetchBreeds();
         fetchDogs();
     });
 </script>
 
 <div>
     <h2 class="text-2xl font-medium mb-6 text-slate-100">Available Dogs</h2>
+    
+    <!-- Filter controls -->
+    <div class="mb-6 p-4 bg-slate-800/60 backdrop-blur-sm rounded-xl border border-slate-700/50">
+        <div class="flex flex-col md:flex-row gap-4">
+            <div class="flex-1">
+                <label for="breed-filter" class="block text-sm font-medium text-slate-300 mb-2">Filter by breed</label>
+                <select 
+                    id="breed-filter"
+                    class="w-full px-4 py-2 bg-slate-700 text-slate-100 rounded-lg focus:ring focus:ring-blue-500/30 focus:outline-none"
+                    bind:value={selectedBreed}
+                >
+                    <option value={null}>All breeds</option>
+                    {#each breeds as breed}
+                        <option value={breed.id}>{breed.name}</option>
+                    {/each}
+                </select>
+            </div>
+            
+            <div class="flex items-end">
+                <label class="inline-flex items-center cursor-pointer">
+                    <input type="checkbox" bind:checked={onlyAvailable} class="sr-only peer">
+                    <div class="relative w-11 h-6 bg-slate-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-500/30 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                    <span class="ms-3 text-sm font-medium text-slate-300">Show only available</span>
+                </label>
+            </div>
+        </div>
+    </div>
     
     {#if loading}
         <!-- loading animation -->
