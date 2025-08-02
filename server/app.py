@@ -13,16 +13,17 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 # Initialize the database with the app
 init_db(app)
 
+
 @app.route('/api/dogs', methods=['GET'])
 def get_dogs() -> Response:
     query = db.session.query(
-        Dog.id, 
-        Dog.name, 
+        Dog.id,
+        Dog.name,
         Breed.name.label('breed')
     ).join(Breed, Dog.breed_id == Breed.id)
-    
+
     dogs_query = query.all()
-    
+
     # Convert the result to a list of dictionaries
     dogs_list: List[Dict[str, Any]] = [
         {
@@ -32,8 +33,9 @@ def get_dogs() -> Response:
         }
         for dog in dogs_query
     ]
-    
+
     return jsonify(dogs_list)
+
 
 @app.route('/api/dogs/<int:id>', methods=['GET'])
 def get_dog(id: int) -> tuple[Response, int] | Response:
@@ -47,11 +49,11 @@ def get_dog(id: int) -> tuple[Response, int] | Response:
         Dog.gender,
         Dog.status
     ).join(Breed, Dog.breed_id == Breed.id).filter(Dog.id == id).first()
-    
+
     # Return 404 if dog not found
     if not dog_query:
         return jsonify({"error": "Dog not found"}), 404
-    
+
     # Convert the result to a dictionary
     dog: Dict[str, Any] = {
         'id': dog_query.id,
@@ -62,10 +64,25 @@ def get_dog(id: int) -> tuple[Response, int] | Response:
         'gender': dog_query.gender,
         'status': dog_query.status.name
     }
-    
+
     return jsonify(dog)
 
-## HERE
+
+@app.route('/api/breeds', methods=['GET'])
+def get_breeds() -> Response:
+    breeds_query = db.session.query(Breed.id, Breed.name).all()
+
+    # Convert the result to a list of dictionaries
+    breeds_list: List[Dict[str, Any]] = [
+        {
+            'id': breed.id,
+            'name': breed.name
+        }
+        for breed in breeds_query
+    ]
+
+    return jsonify(breeds_list)
+
 
 if __name__ == '__main__':
-    app.run(debug=True, port=5100) # Port 5100 to avoid macOS conflicts
+    app.run(debug=True, port=5100)  # Port 5100 to avoid macOS conflicts
